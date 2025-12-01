@@ -1,3 +1,17 @@
-FROM eclipse-temurin:23-jdk
-COPY target/stockflow.jar app.jar
+# ---------- Build Stage ----------
+FROM maven:3.9.6-eclipse-temurin-17 AS build
+WORKDIR /app
+
+COPY pom.xml .
+COPY src ./src
+
+RUN mvn clean package -DskipTests
+
+# ---------- Runtime Stage ----------
+FROM eclipse-temurin:17-jdk
+WORKDIR /app
+
+# FIX: correct jar file name
+COPY --from=build /app/target/stockflow-cli-1.0-SNAPSHOT.jar app.jar
+
 ENTRYPOINT ["java", "-jar", "app.jar"]

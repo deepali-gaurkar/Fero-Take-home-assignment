@@ -7,43 +7,54 @@ public class Inventory {
     private final List<Order> history = new ArrayList<>();
     private final Map<String, Queue<Order>> stock = new HashMap<>();
 
-    public Inventory() {
-        stock.put("wine", new LinkedList<>());
-        stock.put("whisky", new LinkedList<>());
-    }
-
     public void sell(String sku, int qty) {
-        Order order = new Order("sell", sku, qty);
-        history.add(order);  // adds a new sell order to the history
-        stock.get(sku).offer(order); // adds the order into the queue for the sku
-    }
-// attempts to fulfill buy order using the available stock in FIFO order
-    public void buy(String sku, int qty) {
-        Queue<Order> queue = stock.get(sku);
 
-        if (total(queue) < qty) {
-            return;
+        Order sellOrder = new Order("sell", sku, qty);
+
+        stock.computeIfAbsent(sku, k -> new LinkedList<>())
+                .offer(sellOrder);
+
+        history.add(sellOrder);
+    }
+
+    public void buy(String sku, int qty) {
+
+        Queue<Order> queue = stock.getOrDefault(sku, new LinkedList<>());
+
+        int available = total(queue);
+        if (available == 0) {
+            return;  // do nothing when no stock
         }
 
-        int left = qty;
+        int toBuy = Math.min(available, qty);
+        int remainingToBuy = toBuy;
 
-        while (left > 0 && !queue.isEmpty()) {
-            Order s = queue.peek();
-            int use = Math.min(left, s.getRemaining());
+        // FIFO consumption loop
+        while (remainingToBuy > 0 && !queue.isEmpty()) {
+            Order oldestSell = queue.peek();
 
-            s.setRemaining(s.getRemaining() - use);
-            left -= use;
+            int use = Math.min(oldestSell.getRemaining(), remainingToBuy);
 
-            if (s.getRemaining() == 0) {
+            oldestSell.reduceRemaining(use);
+            remainingToBuy -= use;
+
+            if (oldestSell.getRemaining() == 0) {
                 queue.poll();
             }
         }
 
-        Order b = new Order("buy", sku, qty);
-        b.setRemaining(0);
-        history.add(b);
+        // DO NOT CREATE BUY ORDER IF NOTHING WAS FULFILLED
+        if (toBuy == 0) {
+            return;
+        }
+
+        // Create buy order with actual fulfilled amount
+        Order buyOrder = new Order("buy", sku, toBuy);
+        buyOrder.reduceRemaining(toBuy); // mark closed
+        history.add(buyOrder);
     }
-// calculates the total remaining stock
+
+
     private int total(Queue<Order> q) {
         int sum = 0;
         for (Order o : q) {
@@ -57,5 +68,9 @@ public class Inventory {
             System.out.println(o);
         }
         System.out.println();
+    }
+
+    public List<Order> getHistory() {
+        return history;
     }
 }

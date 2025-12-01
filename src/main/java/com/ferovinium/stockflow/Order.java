@@ -2,9 +2,9 @@ package com.ferovinium.stockflow;
 
 public class Order {
 
-    private String type;
-    private String sku;
-    private int quantity;
+    private final String type;
+    private final String sku;
+    private final int quantity;
     private int remaining;
 
     public Order(String type, String sku, int quantity) {
@@ -30,8 +30,8 @@ public class Order {
         return remaining;
     }
 
-    public void setRemaining(int remaining) {
-        this.remaining = remaining;
+    public void reduceRemaining(int amount) {
+        this.remaining -= amount;
     }
 
     @Override
